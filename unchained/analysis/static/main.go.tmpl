@@ -1,0 +1,87 @@
+package main
+
+import (
+	"fmt"
+	dependencies "{{ .Module }}/dependencies"
+	handlers "{{ .Module }}/fns"
+	"context"
+	"encoding/json"
+	"net/http"
+
+	"github.com/gorilla/mux"
+	"go.uber.org/fx"
+)
+
+func main() {
+	fmt.Println("Lifting off")
+
+	{{ range $i, $t := .Handlers }}
+	var handler{{ $i }} handlers.{{ $t.Name }}
+	{{ end }}
+
+	{{ range $i, $t := .Handlers }}
+		{{ range $j, $m := $t.Methods }}
+	handlerFn_{{$i}}_{{$m.Name}} := func(r *mux.Router) {
+		r.HandleFunc("/{{ $t.Name | MkHandler }}/{{ $m.Name | MkPath }}", func(w http.ResponseWriter, r *http.Request) {
+			var body handlers.{{ $m | FirstArg }}
+			err := json.NewDecoder(r.Body).Decode(&body)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			out, err := handler{{ $i }}.{{ $m.Name}}(r.Context(), body)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			bytes, err := json.Marshal(out)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			w.Write(bytes)
+		})
+	}
+		{{ end }}
+	{{ end }}
+
+	fx.New(
+		{{ range $i, $f := .Deps }}
+		fx.Provide(dependencies.{{ $f.Name }}),
+		{{ end }}
+		fx.Provide(NewRouter),
+		{{ range $i, $t := .Handlers }}
+		fx.Populate(&handler{{ $i }}),
+		{{ range $j, $m := $t.Methods }}
+		fx.Invoke(handlerFn_{{$i}}_{{$m.Name}}),
+		{{ end }}
+		{{ end }}
+	).Run()
+}
+
+func NewRouter(lc fx.Lifecycle) *mux.Router {
+	r := mux.NewRouter()
+
+	server := &http.Server{
+		Addr:    ":8080",
+		Handler: r,
+	}
+
+	lc.Append(
+		fx.Hook{
+			OnStart: func(ctx context.Context) error {
+				fmt.Println("Starting server on port 8080")
+				go server.ListenAndServe()
+				return nil
+			},
+			OnStop: func(ctx context.Context) error {
+				return server.Shutdown(ctx)
+			},
+		},
+	)
+
+	return r
+}

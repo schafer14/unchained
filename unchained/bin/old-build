@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+echo "---> Unchained Buildpack"
+
+layersdir=$1
+golayer="$layersdir"/go
+mkdir -p "$golayer"
+
+echo "---> Downloading and extracting Golang 1.16.6"
+
+go_url=https://golang.org/dl/go1.16.6.linux-amd64.tar.gz
+wget -q -O - "$go_url" | tar -xzf - -C "$golayer"
+cat > "$layersdir/go.toml" <<EOL
+launch = true
+build=true
+cache=true
+EOL
+export PATH="$golayer"/go/bin:$PATH
+
+echo "---> Installing dependencies"
+
+go mod tidy
+mkdir fns
+mv go.mod go.sum handle.go unchained.yaml fns
+cat > 'main.go' <<EOL
+package main
+
+import "fmt"
+
+func main() {
+  fmt.Println("HELLO WORLD")
+}
+
+EOL

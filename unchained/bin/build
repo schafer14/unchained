@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+echo "---> Unchained Buildpack"
+
+appDir="$(pwd)"
+bpDir="$(
+	cd "$(dirname "$0")/.."
+	pwd
+)" 
+layersdir=$1
+golayer="$layersdir"/go
+mkdir -p "$golayer"
+
+
+echo "---> Downloading and extracting Golang 1.16.6"
+
+go_url=https://golang.org/dl/go1.16.6.linux-amd64.tar.gz
+wget -q -O - "$go_url" | tar -xzf - -C "$golayer"
+cat > "$layersdir/go.toml" <<EOL
+build = true
+cache = true
+EOL
+
+export PATH="$golayer"/go/bin:$PATH
+
+echo "---> Building main.go"
+
+cd $bpDir/analysis && go run . $appDir
+cd $appDir
+
+echo "---> Installing dependencies"
+
+go mod tidy
+go mod vendor
+
+echo "---> Building applicaiton"
+
+go build -o web .
+echo $PATH
+
+cat > "$layersdir/launch.toml" <<EOL
+[[processes]]
+type = "web"
+command = "./web"
+EOL
+
