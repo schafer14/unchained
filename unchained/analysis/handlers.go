@@ -76,6 +76,7 @@ func makeHandler(t *doc.Type) HandlerGroup {
 
 	docs := strings.Split(t.Doc, "\n")
 	hg.Name = t.Name
+	hg.RoutingKey = "/" + strings.ReplaceAll(strings.ToLower(hg.Name), "handler", "")
 
 LOOP:
 	for _, d := range docs {
@@ -110,6 +111,7 @@ func makeFn(fn *doc.Func) HandlerFunction {
 	var hf HandlerFunction
 	hf.Type = "http"
 	hf.Name = fn.Name
+	hf.RoutingKey = "/" + strings.ReplaceAll(strings.ToLower(hf.Name), "handle", "")
 
 	docs := strings.Split(fn.Doc, "\n")
 LOOP:

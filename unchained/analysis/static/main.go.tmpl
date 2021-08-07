@@ -23,7 +23,14 @@ func main() {
 		{{ range $j, $m := $t.Fns }}
 	handlerFn_{{$i}}_{{$m.Name}} := func(r *mux.Router) {
     var hf http.HandlerFunc =  func(w http.ResponseWriter, r *http.Request) {
+      {{ if ne $m.BodyArg "" }}
 			var body handlers.{{ $m.BodyArg }}
+			err := json.NewDecoder(r.Body).Decode(&body)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+      {{ end }}
 
       {{ if gt (len $m.UrlParams) 0 }}
         vars := mux.Vars(r)
@@ -33,11 +40,6 @@ func main() {
         {{ $k }} := vars["{{ $k }}"]
       {{ end }}
 
-			err := json.NewDecoder(r.Body).Decode(&body)
-			if err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
 
       out, err := handler{{ $i }}.{{ $m.Name}}({{ $m.CallArgsStr }})
 			if err != nil {

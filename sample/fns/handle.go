@@ -67,3 +67,15 @@ func (a *AssetsHandler) HandleHiy(ctx context.Context, hey, id string, in DTOIn)
 
 	return id, nil
 }
+
+type GroupsHandler struct {
+	dig.In
+
+	Log logrus.FieldLogger
+}
+
+func (a *GroupsHandler) HandleMember(ctx context.Context) (string, error) {
+	a.Log.Warnln("no args")
+
+	return "Banner", nil
+}
