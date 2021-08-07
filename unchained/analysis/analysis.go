@@ -7,17 +7,12 @@ import (
 	"go/doc"
 	"go/parser"
 	"go/token"
-	"html/template"
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"path"
 	"strings"
 )
-
-//go:embed static/main.go.tmpl
-var mainTemplate string
 
 func main() {
 
@@ -41,54 +36,6 @@ func main() {
 	MakeMain(fnsPkg, depsPkg, f)
 
 	f.Close()
-}
-
-type MainConfig struct {
-	Module   string
-	Handlers []*doc.Type
-	Deps     []*doc.Func
-}
-
-func MakeMain(fnsPkg *doc.Package, deps *doc.Package, w io.Writer) {
-	funcMap := template.FuncMap{
-		"MkHandler": func(s string) string {
-			return strings.ReplaceAll(strings.ToLower(s), "handler", "")
-		},
-		"MkPath": func(s string) string {
-			return strings.ReplaceAll(strings.ToLower(s), "handle", "")
-		},
-		"FirstArg": func(x *doc.Func) string {
-			return x.Decl.Type.Params.List[1].Type.(*ast.Ident).Name
-		},
-	}
-
-	cfg := MainConfig{
-		Module:   "assets",
-		Handlers: getHandlerTypes(fnsPkg),
-		Deps:     getDepTypes(deps),
-	}
-
-	tmpl, err := template.New("main.go").Funcs(funcMap).Parse(mainTemplate)
-	if err != nil {
-		panic(err)
-	}
-
-	err = tmpl.Execute(w, cfg)
-	if err != nil {
-		panic(err)
-	}
-}
-
-func getHandlerTypes(fnsPkg *doc.Package) []*doc.Type {
-	types := []*doc.Type{}
-
-	for _, t := range fnsPkg.Types {
-		if strings.HasSuffix(t.Name, "Handler") {
-			types = append(types, t)
-		}
-	}
-
-	return types
 }
 
 func getDepTypes(depPkg *doc.Package) []*doc.Func {
@@ -154,3 +101,5 @@ func mustParse(fset *token.FileSet, filename, src string) *ast.File {
 	}
 	return f
 }
+
+type MiddlewareDefinition struct{}

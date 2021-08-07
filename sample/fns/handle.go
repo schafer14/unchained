@@ -8,6 +8,7 @@ import (
 	"go.uber.org/dig"
 )
 
+//@unchained:routingKey /assets
 type AssetsHandler struct {
 	dig.In
 
@@ -27,6 +28,8 @@ type DTOOut struct {
 	WalletAddress string `json:"walletAddress"`
 }
 
+//@unchained:routingKey
+//@unchained:method Post
 func (a *AssetsHandler) HandleNew(ctx context.Context, in DTOIn) (DTOOut, error) {
 	a.Log.Warnln(in)
 
@@ -38,4 +41,29 @@ func (a *AssetsHandler) HandleNew(ctx context.Context, in DTOIn) (DTOOut, error)
 	}
 
 	return dtoOut, nil
+}
+
+//@unchained:routingKey
+//@unchained:method Get
+func (a *AssetsHandler) HandleQuery(ctx context.Context, in DTOIn) (string, error) {
+	a.Log.Warnln(in)
+
+	return "hey", nil
+}
+
+//@unchained:routingKey /thing/{id}
+func (a *AssetsHandler) HandleHi(ctx context.Context, id string, in DTOIn) (string, error) {
+	a.Log.Warnln(in)
+	a.Log.Info(id)
+
+	return id, nil
+}
+
+//@unchained:routingKey /thing/{id}/{hey}
+func (a *AssetsHandler) HandleHiy(ctx context.Context, hey, id string, in DTOIn) (string, error) {
+	a.Log.Warnln(in)
+	a.Log.Info(id)
+	a.Log.Info(hey)
+
+	return id, nil
 }

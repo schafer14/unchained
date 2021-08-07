@@ -20,17 +20,26 @@ func main() {
 	{{ end }}
 
 	{{ range $i, $t := .Handlers }}
-		{{ range $j, $m := $t.Methods }}
+		{{ range $j, $m := $t.Fns }}
 	handlerFn_{{$i}}_{{$m.Name}} := func(r *mux.Router) {
-		r.HandleFunc("/{{ $t.Name | MkHandler }}/{{ $m.Name | MkPath }}", func(w http.ResponseWriter, r *http.Request) {
-			var body handlers.{{ $m | FirstArg }}
+    var hf http.HandlerFunc =  func(w http.ResponseWriter, r *http.Request) {
+			var body handlers.{{ $m.BodyArg }}
+
+      {{ if gt (len $m.UrlParams) 0 }}
+        vars := mux.Vars(r)
+      {{ end }}
+
+      {{ range $i, $k := $m.UrlParams }}
+        {{ $k }} := vars["{{ $k }}"]
+      {{ end }}
+
 			err := json.NewDecoder(r.Body).Decode(&body)
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
 
-			out, err := handler{{ $i }}.{{ $m.Name}}(r.Context(), body)
+      out, err := handler{{ $i }}.{{ $m.Name}}({{ $m.CallArgsStr }})
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -43,8 +52,10 @@ func main() {
 			}
 
 			w.Write(bytes)
-		})
-	}
+      }
+
+      r.Handle("{{ $t.RoutingKey }}{{ $m.RoutingKey }}", hf){{ if ne $m.Method "" }}.Methods(http.Method{{ $m.Method }}){{ end }}
+  }
 		{{ end }}
 	{{ end }}
 
@@ -55,7 +66,7 @@ func main() {
 		fx.Provide(NewRouter),
 		{{ range $i, $t := .Handlers }}
 		fx.Populate(&handler{{ $i }}),
-		{{ range $j, $m := $t.Methods }}
+		{{ range $j, $m := $t.Fns }}
 		fx.Invoke(handlerFn_{{$i}}_{{$m.Name}}),
 		{{ end }}
 		{{ end }}
